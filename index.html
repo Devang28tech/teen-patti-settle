@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Table Settle – Teen Patti & Poker payouts</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f3f6f2;--card:#fff;--ink:#14231c;--mute:#5d6e65;--line:#d9e2db;--felt:#0f5c43;--gold:#e8a317;--win:#127a4b;--lose:#b3392f;--r:14px;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0b1511;--card:#13221b;--ink:#e8f0ea;--mute:#98ab9f;--line:#24382e;--felt:#1d8a64;--win:#4cd08e;--lose:#ff8a7d}}
+:root[data-theme="dark"]{--bg:#0b1511;--card:#13221b;--ink:#e8f0ea;--mute:#98ab9f;--line:#24382e;--felt:#1d8a64;--win:#4cd08e;--lose:#ff8a7d}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 "Bricolage Grotesque",system-ui,sans-serif}
+main{max-width:760px;margin:0 auto;padding:20px 16px 60px}
+header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+h1{font-size:30px;font-weight:800;margin:0;letter-spacing:-.5px}
+h2{font-size:18px;margin:0 0 12px;font-weight:600}
+.sub{color:var(--mute);font-size:14px;margin:2px 0 0}
+section{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin-bottom:14px}
+.hero{background:var(--felt);color:#fff;border:0;display:flex;gap:18px;flex-wrap:wrap;justify-content:space-between}
+.hero b{font-size:26px;display:block;font-weight:800}.hero span{font-size:13px;opacity:.85}
+input,select,button{font:inherit;color:inherit}
+input,select{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-width:0}
+button{border:0;border-radius:10px;padding:10px 14px;background:var(--felt);color:#fff;font-weight:600;cursor:pointer}
+button.ghost{background:transparent;color:var(--mute);border:1px solid var(--line)}
+button.gold{background:var(--gold);color:#241a00}
+:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.row>input,.row>select{flex:1 1 120px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:4px 6px 4px 12px;background:var(--bg)}
+.chip button{padding:0 8px;background:none;color:var(--mute);font-size:18px;line-height:1.4}
+.checks{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+.checks label{border:1px solid var(--line);border-radius:999px;padding:5px 12px;cursor:pointer;font-size:14px}
+.checks input{display:none}.checks label:has(input:checked){background:var(--felt);color:#fff;border-color:var(--felt)}
+table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:9px 6px;border-bottom:1px solid var(--line);font-size:15px}
+th{color:var(--mute);font-weight:400;font-size:13px}td.n,th.n{text-align:right}
+.wrap{overflow-x:auto}
+.pos{color:var(--win);font-weight:600}.neg{color:var(--lose);font-weight:600}
+.pay{display:flex;justify-content:space-between;gap:10px;padding:12px;border:1px solid var(--line);border-radius:10px;margin-bottom:8px;align-items:center}
+.pay .amt{font-weight:800;font-size:18px}.pay.done{opacity:.45;text-decoration:line-through}
+.empty{color:var(--mute);margin:0}.tg{display:flex;gap:8px;align-items:center;font-size:14px;color:var(--mute);margin:0 0 10px}input[type=number]{-moz-appearance:textfield;appearance:textfield}input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}.cbox{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:12px}.cbox[hidden]{display:none}.cl{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:14px}.cl input{width:90px}.hist li{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line);font-size:14px;list-style:none}
+ul{padding:0;margin:0}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <div><h1>Table Settle</h1><p class="sub">Add rounds. Get who pays whom, in fewest payments.</p></div>
+  <button class="ghost" id="theme" aria-label="Toggle theme">Theme</button>
+</header>
+
+<section class="hero" id="hero"></section>
+
+<section>
+  <h2>Players</h2>
+  <form class="row" id="pf"><input id="pn" placeholder="Player name" maxlength="20" required><button class="gold">Add player</button></form>
+  <div class="chips" id="chips"></div>
+</section>
+
+<section>
+  <h2>Record a round</h2>
+  <div class="row">
+    <select id="winner" aria-label="Winner"></select>
+    
+  </div>
+  <div class="checks" id="checks" aria-label="Who played"></div>
+  <p class="tg">Enter what each losing player put in. The winner takes the pot.</p>
+  <div class="cbox" id="cbox"></div>
+  <button id="add">Save round</button>
+</section>
+
+<section>
+  <h2>Settle up</h2>
+  <div hidden>
+    
+    <input type="hidden" id="unit" value="1">
+  </div>
+  <div id="pays"></div>
+</section>
+
+<section>
+  <h2>Leaderboard</h2>
+  <div class="wrap"><table id="lb"></table></div>
+</section>
+
+<section>
+  <h2>Rounds</h2>
+  <ul class="hist" id="hist"></ul>
+  <div class="row" style="margin-top:12px"><button class="ghost" id="undo">Undo last round</button><button class="ghost" id="reset">New session</button></div>
+</section>
+</main>
+
+<script>
+// ---------- state ----------
+let S={players:[],rounds:[],paid:{}};
+const KEY="table-settle-v1";
+try{const x=localStorage.getItem(KEY);if(x)S=JSON.parse(x)}catch(e){}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
+const $=id=>document.getElementById(id);
+const esc=s=>s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const inr=n=>"₹"+Number(n).toLocaleString("en-IN",{maximumFractionDigits:2});
+
+// ---------- core functions ----------
+// 1. Net balance per player (in paise to avoid float errors)
+function netBalances(players,rounds){
+  const net=Object.fromEntries(players.map(p=>[p,0]));
+  for(const r of rounds){
+    const losers=r.players.filter(p=>p!==r.winner&&p in net);
+    const each=Math.round((r.amount||0)*100);
+    for(const l of losers){const c=r.pays?Math.round((r.pays[l]||0)*100):each;net[l]-=c;net[r.winner]+=c}
+  }
+  return net; // paise, always sums to 0
+}
+// 2. Round every balance to a unit, then fix leftover so total stays exactly 0
+function roundNets(net,unit){
+  const u=Math.round(unit*100),names=Object.keys(net);
+  const out={};names.forEach(n=>out[n]=Math.round(net[n]/u)*u);
+  let diff=names.reduce((s,n)=>s+out[n],0);
+  const order=names.slice().sort((a,b)=>Math.abs(net[b])-Math.abs(net[a]));
+  for(let i=0;diff!==0&&order.length;i++){ // push residue onto biggest balances, one unit at a time
+    const n=order[i%order.length],step=diff>0?-u:u;
+    out[n]+=step;diff+=step;
+  }
+  return out;
+}
+// 3. Minimum-ish payments: biggest debtor pays biggest creditor
+function settle(net){
+  const cr=[],db=[];
+  for(const [n,v] of Object.entries(net)){if(v>0)cr.push([n,v]);else if(v<0)db.push([n,-v])}
+  const out=[];
+  while(cr.length&&db.length){
+    cr.sort((a,b)=>b[1]-a[1]);db.sort((a,b)=>b[1]-a[1]);
+    const x=Math.min(cr[0][1],db[0][1]);
+    out.push({from:db[0][0],to:cr[0][0],amount:x/100});
+    cr[0][1]-=x;db[0][1]-=x;
+    if(!cr[0][1])cr.shift();if(!db[0][1])db.shift();
+  }
+  return out;
+}
+// 4. Ranking stats
+function stats(players,rounds,net){
+  return players.map(p=>{
+    const played=rounds.filter(r=>r.players.includes(p)).length;
+    const wins=rounds.filter(r=>r.winner===p).length;
+    return{p,played,wins,rate:played?Math.round(wins/played*100):0,net:(net[p]||0)/100};
+  }).sort((a,b)=>b.net-a.net||b.wins-a.wins);
+}
+
+// ---------- UI ----------
+function render(){
+  const P=S.players,R=S.rounds,unit=parseFloat($("unit").value);
+  $("chips").innerHTML=P.length?P.map(p=>`<span class="chip">${esc(p)}<button data-rm="${esc(p)}" aria-label="Remove ${esc(p)}">×</button></span>`).join(""):'<p class="empty">Add at least two players to begin.</p>';
+  $("winner").innerHTML=P.map(p=>`<option>${esc(p)}</option>`).join("");
+  const prev=new Set([...document.querySelectorAll("#checks input:checked")].map(i=>i.value));
+  $("checks").innerHTML=P.map(p=>`<label><input type="checkbox" value="${esc(p)}" ${(!prev.size||prev.has(p))?"checked":""}>${esc(p)}</label>`).join("");
+  const raw=netBalances(P,R),net=roundNets(raw,unit),st=stats(P,R,net);
+  const rt=r=>r.pays?r.players.filter(p=>p!==r.winner).reduce((s,p)=>s+(r.pays[p]||0),0):r.amount*(r.players.length-1);const pot=R.reduce((s,r)=>s+rt(r),0);
+  $("hero").innerHTML=`<div><b>${R.length}</b><span>rounds played</span></div><div><b>${inr(pot)}</b><span>total moved on table</span></div><div><b>${st[0]&&R.length?esc(st[0].p):"–"}</b><span>leading</span></div>`;
+  const pays=settle(net);
+  $("pays").innerHTML=pays.length?pays.map((x,i)=>{const k=x.from+">"+x.to+">"+x.amount,d=S.paid[k];
+    return`<div class="pay"><div><b>${esc(x.from)}</b> pays <b>${esc(x.to)}</b></div><span class="amt">${inr(x.amount)}</span></div>`}).join(""):'<p class="empty">Nothing to settle yet. Save a round first.</p>';
+  $("lb").innerHTML=`<tr><th>#</th><th>Player</th><th class="n">Wins</th><th class="n">Win rate</th><th class="n">Net</th></tr>`+st.map((s,i)=>`<tr><td>${i+1}</td><td>${esc(s.p)}</td><td class="n">${s.wins}/${s.played}</td><td class="n">${s.rate}%</td><td class="n ${s.net>0?"pos":s.net<0?"neg":""}">${s.net>0?"+":""}${inr(s.net)}</td></tr>`).join("");
+  $("hist").innerHTML=R.length?R.slice().reverse().map(r=>`<li><span>${esc(r.winner)} won (${r.players.length} players)</span><span>${r.pays?inr(rt(r))+" pot":inr(r.amount)+" each"}</span></li>`).join(""):'<li class="empty">No rounds yet.</li>';
+  renderCustom();save();
+}
+$("pf").onsubmit=e=>{e.preventDefault();const n=$("pn").value.trim();if(n&&!S.players.includes(n)){S.players.push(n);$("pn").value="";render()}};
+$("chips").onclick=e=>{const n=e.target.dataset.rm;if(n&&confirm("Remove "+n+" and their rounds?")){S.players=S.players.filter(p=>p!==n);S.rounds=S.rounds.map(r=>({...r,players:r.players.filter(p=>p!==n)})).filter(r=>r.winner!==n&&r.players.length>1);render()}};
+$("add").onclick=()=>{
+  const w=$("winner").value,pl=[...document.querySelectorAll("#checks input:checked")].map(i=>i.value);
+  if(!w){alert("Add players and pick a winner.");return}
+  if(pl.length<2||!pl.includes(w)){alert("Select at least two players, including the winner.");return}
+  let pays=null;{pays={};let t=0;pl.forEach(p=>{if(p!==w){const el=document.querySelector('[data-c="'+CSS.escape(p)+'"]');const v=el?parseFloat(el.value)||0:0;pays[p]=v;t+=v}});if(t<=0){alert("Enter what each losing player put in.");return}}
+  S.rounds.push({winner:w,amount:0,players:pl,pays});S.paid={};$("cbox").innerHTML="";render();
+};
+$("pays").onclick=e=>{const k=e.target.dataset.paid;if(k){S.paid[k]=!S.paid[k];render()}};
+$("unit").onchange=()=>{S.paid={};render()};
+$("undo").onclick=()=>{S.rounds.pop();S.paid={};render()};
+function renderCustom(){
+  const box=$("cbox");
+  
+  
+  const old={};box.querySelectorAll("input").forEach(i=>old[i.dataset.c]=i.value);
+  const w=$("winner").value,pl=[...document.querySelectorAll("#checks input:checked")].map(i=>i.value).filter(p=>p!==w);
+  box.innerHTML=pl.map(p=>`<label class="cl">${esc(p)}<input type="number" min="0" step="any" inputmode="decimal" data-c="${esc(p)}" value="${old[p]??""}" placeholder="₹"></label>`).join("")||'<p class="empty">Select the players first.</p>';
+}
+$("winner").onchange=renderCustom;$("checks").onchange=renderCustom;
+$("reset").onclick=()=>{if(confirm("Clear all rounds? Players stay.")){S.rounds=[];S.paid={};render()}};
+$("theme").onclick=()=>{const r=document.documentElement,d=getComputedStyle(r).getPropertyValue("--bg").trim()==="#0b1511";r.dataset.theme=d?"light":"dark"};
+render();
+</script>
+</body>
+</html>
