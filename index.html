@@ -39,9 +39,16 @@ th{color:var(--mute);font-weight:400;font-size:13px}td.n,th.n{text-align:right}
 .wrap{overflow-x:auto}
 .pos{color:var(--win);font-weight:600}.neg{color:var(--lose);font-weight:600}
 .pay{display:flex;justify-content:space-between;gap:10px;padding:12px;border:1px solid var(--line);border-radius:10px;margin-bottom:8px;align-items:center}
-.pay .amt{font-weight:800;font-size:18px}.pay.done{opacity:.45;text-decoration:line-through}
-.empty{color:var(--mute);margin:0}.tg{display:flex;gap:8px;align-items:center;font-size:14px;color:var(--mute);margin:0 0 10px}input[type=number]{-moz-appearance:textfield;appearance:textfield}input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}.cbox{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:12px}.cbox[hidden]{display:none}.cl{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:14px}.cl input{width:90px}.hist li{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line);font-size:14px;list-style:none}
-ul{padding:0;margin:0}
+.pay .amt{font-weight:800;font-size:18px}
+.empty{color:var(--mute);margin:0}.hist li{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line);font-size:14px;list-style:none}
+.tg{font-size:14px;color:var(--mute);margin:0 0 10px}
+input[type=number]{-moz-appearance:textfield;appearance:textfield}
+input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.cbox{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:12px}
+.cl{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:14px}.cl input{width:90px}
+ul{padding:0;margin:0}[hidden]{display:none!important}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--lose);margin-right:6px}.dot.on{background:var(--win)}
+.code{font-weight:800;letter-spacing:1px}
 </style>
 </head>
 <body>
@@ -51,6 +58,19 @@ ul{padding:0;margin:0}
   <button class="ghost" id="theme" aria-label="Toggle theme">Theme</button>
 </header>
 
+<section id="table">
+  <h2>Table</h2>
+  <p class="sub" id="localnote" hidden>Sync is not set up, so rounds are saved on this phone only. See the setup steps to share a table.</p>
+  <div id="join">
+    <form class="row" id="jf"><input id="jc" placeholder="Table code (6+ letters or digits)" maxlength="30" autocapitalize="none"><button>Join table</button><button type="button" class="gold" id="newt">New table</button></form>
+  </div>
+  <div id="joined" hidden>
+    <div class="row"><span><span class="dot" id="dot"></span>Table <span class="code" id="cname"></span></span><button class="ghost" id="copy">Copy invite link</button><button class="ghost" id="leave">Leave</button></div>
+    <p class="sub">Everyone who opens this link sees the same rounds live.</p>
+  </div>
+</section>
+
+<div id="app">
 <section class="hero" id="hero"></section>
 
 <section>
@@ -61,10 +81,7 @@ ul{padding:0;margin:0}
 
 <section>
   <h2>Record a round</h2>
-  <div class="row">
-    <select id="winner" aria-label="Winner"></select>
-    
-  </div>
+  <div class="row"><select id="winner" aria-label="Winner"></select></div>
   <div class="checks" id="checks" aria-label="Who played"></div>
   <p class="tg">Enter what each losing player put in. The winner takes the pot.</p>
   <div class="cbox" id="cbox"></div>
@@ -73,10 +90,6 @@ ul{padding:0;margin:0}
 
 <section>
   <h2>Settle up</h2>
-  <div hidden>
-    
-    <input type="hidden" id="unit" value="1">
-  </div>
   <div id="pays"></div>
 </section>
 
@@ -90,43 +103,53 @@ ul{padding:0;margin:0}
   <ul class="hist" id="hist"></ul>
   <div class="row" style="margin-top:12px"><button class="ghost" id="undo">Undo last round</button><button class="ghost" id="reset">New session</button></div>
 </section>
+</div>
 </main>
 
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script>
-// ---------- state ----------
-let S={players:[],rounds:[],paid:{}};
-const KEY="table-settle-v1";
-try{const x=localStorage.getItem(KEY);if(x)S=JSON.parse(x)}catch(e){}
-const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
+// ============ PASTE YOUR FIREBASE CONFIG HERE ============
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyCm229HKjHtU6RV_k6EA5xnWYFNHo5P4uY",
+  authDomain: "settlement-app-9e9a1.firebaseapp.com",
+  databaseURL: "https://settlement-app-9e9a1-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "settlement-app-9e9a1",
+  storageBucket: "settlement-app-9e9a1.firebasestorage.app",
+  messagingSenderId: "964396374010",
+  appId: "1:964396374010:web:879302acab65800e763643",
+  measurementId: "G-CMBJVJ04KX"
+};
+// =========================================================
+
 const $=id=>document.getElementById(id);
-const esc=s=>s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const inr=n=>"₹"+Number(n).toLocaleString("en-IN",{maximumFractionDigits:2});
+const cfgOk=/^https:\/\//.test(FIREBASE_CONFIG.databaseURL)&&typeof firebase!=="undefined";
+const LK="table-settle-local",CK="table-settle-code";
+let S={players:[],pk:[],rounds:[]},ref=null,code="",db=null;
 
 // ---------- core functions ----------
-// 1. Net balance per player (in paise to avoid float errors)
-function netBalances(players,rounds){
+function netBalances(players,rounds){ // paise, sums to 0
   const net=Object.fromEntries(players.map(p=>[p,0]));
   for(const r of rounds){
-    const losers=r.players.filter(p=>p!==r.winner&&p in net);
-    const each=Math.round((r.amount||0)*100);
-    for(const l of losers){const c=r.pays?Math.round((r.pays[l]||0)*100):each;net[l]-=c;net[r.winner]+=c}
+    for(const l of r.players){
+      if(l===r.winner||!(l in net))continue;
+      const c=Math.round(((r.pays&&r.pays[l])||0)*100);
+      net[l]-=c;net[r.winner]+=c;
+    }
   }
-  return net; // paise, always sums to 0
+  return net;
 }
-// 2. Round every balance to a unit, then fix leftover so total stays exactly 0
-function roundNets(net,unit){
-  const u=Math.round(unit*100),names=Object.keys(net);
-  const out={};names.forEach(n=>out[n]=Math.round(net[n]/u)*u);
+function roundNets(net,unit){ // round to unit, push leftover onto biggest balances
+  const u=Math.round(unit*100),names=Object.keys(net),out={};
+  names.forEach(n=>out[n]=Math.round(net[n]/u)*u);
   let diff=names.reduce((s,n)=>s+out[n],0);
   const order=names.slice().sort((a,b)=>Math.abs(net[b])-Math.abs(net[a]));
-  for(let i=0;diff!==0&&order.length;i++){ // push residue onto biggest balances, one unit at a time
-    const n=order[i%order.length],step=diff>0?-u:u;
-    out[n]+=step;diff+=step;
-  }
+  for(let i=0;diff!==0&&order.length;i++){const n=order[i%order.length],st=diff>0?-u:u;out[n]+=st;diff+=st}
   return out;
 }
-// 3. Minimum-ish payments: biggest debtor pays biggest creditor
-function settle(net){
+function settle(net){ // biggest debtor pays biggest creditor
   const cr=[],db=[];
   for(const [n,v] of Object.entries(net)){if(v>0)cr.push([n,v]);else if(v<0)db.push([n,-v])}
   const out=[];
@@ -139,56 +162,98 @@ function settle(net){
   }
   return out;
 }
-// 4. Ranking stats
 function stats(players,rounds,net){
   return players.map(p=>{
-    const played=rounds.filter(r=>r.players.includes(p)).length;
-    const wins=rounds.filter(r=>r.winner===p).length;
+    const played=rounds.filter(r=>r.players.includes(p)).length,wins=rounds.filter(r=>r.winner===p).length;
     return{p,played,wins,rate:played?Math.round(wins/played*100):0,net:(net[p]||0)/100};
   }).sort((a,b)=>b.net-a.net||b.wins-a.wins);
 }
 
+// ---------- storage layer (Firebase when configured, otherwise this phone) ----------
+const persist=()=>{try{localStorage.setItem(LK,JSON.stringify(S))}catch(e){}};
+function addPlayer(n){if(cfgOk)ref.child("players").push(n);else{S.players.push(n);S.pk.push(n);persist();render()}}
+function removePlayer(n){const i=S.players.indexOf(n);if(cfgOk)ref.child("players/"+S.pk[i]).remove();else{S.players.splice(i,1);S.pk.splice(i,1);persist();render()}}
+function addRound(r){if(cfgOk)ref.child("rounds").push(r);else{r.id=String(Date.now());S.rounds.push(r);persist();render()}}
+function undoRound(){const l=S.rounds[S.rounds.length-1];if(!l)return;if(cfgOk)ref.child("rounds/"+l.id).remove();else{S.rounds.pop();persist();render()}}
+function clearRounds(){if(cfgOk)ref.child("rounds").remove();else{S.rounds=[];persist();render()}}
+
+function join(c){
+  c=String(c).trim().toLowerCase().replace(/[^a-z0-9-]/g,"");
+  if(c.length<6){alert("Table code needs at least 6 letters or digits.");return}
+  if(ref){ref.child("players").off();ref.child("rounds").off()}
+  code=c;try{localStorage.setItem(CK,c)}catch(e){}
+  history.replaceState(null,"","#"+c);
+  ref=db.ref("tables/"+c);
+  ref.child("players").on("value",s=>{S.players=[];S.pk=[];s.forEach(x=>{S.players.push(x.val());S.pk.push(x.key)});render()});
+  ref.child("rounds").on("value",s=>{S.rounds=[];s.forEach(x=>{const v=x.val();v.id=x.key;S.rounds.push(v)});render()});
+  render();
+}
+function leave(){if(ref){ref.child("players").off();ref.child("rounds").off()}ref=null;code="";S={players:[],pk:[],rounds:[]};try{localStorage.removeItem(CK)}catch(e){}history.replaceState(null,"",location.pathname);render()}
+const newCode=()=>Array.from(crypto.getRandomValues(new Uint8Array(8)),b=>"abcdefghjkmnpqrstuvwxyz23456789"[b%31]).join("");
+
 // ---------- UI ----------
 function render(){
-  const P=S.players,R=S.rounds,unit=parseFloat($("unit").value);
+  const P=S.players,R=S.rounds;
+  $("localnote").hidden=cfgOk;
+  $("join").hidden=!cfgOk||!!code;$("joined").hidden=!(cfgOk&&code);$("cname").textContent=code;
+  $("app").hidden=cfgOk&&!code;
   $("chips").innerHTML=P.length?P.map(p=>`<span class="chip">${esc(p)}<button data-rm="${esc(p)}" aria-label="Remove ${esc(p)}">×</button></span>`).join(""):'<p class="empty">Add at least two players to begin.</p>';
-  $("winner").innerHTML=P.map(p=>`<option>${esc(p)}</option>`).join("");
-  const prev=new Set([...document.querySelectorAll("#checks input:checked")].map(i=>i.value));
-  $("checks").innerHTML=P.map(p=>`<label><input type="checkbox" value="${esc(p)}" ${(!prev.size||prev.has(p))?"checked":""}>${esc(p)}</label>`).join("");
-  const raw=netBalances(P,R),net=roundNets(raw,unit),st=stats(P,R,net);
-  const rt=r=>r.pays?r.players.filter(p=>p!==r.winner).reduce((s,p)=>s+(r.pays[p]||0),0):r.amount*(r.players.length-1);const pot=R.reduce((s,r)=>s+rt(r),0);
+  const w0=$("winner").value;
+  $("winner").innerHTML=P.map(p=>`<option ${p===w0?"selected":""}>${esc(p)}</option>`).join("");
+  const prev=new Set([...document.querySelectorAll("#checks input:checked")].map(i=>i.value)),had=document.querySelectorAll("#checks input").length;
+  $("checks").innerHTML=P.map(p=>`<label><input type="checkbox" value="${esc(p)}" ${(!had||prev.has(p)||!prevAll.has(p))?"checked":""}>${esc(p)}</label>`).join("");
+  prevAll=new Set(P);
+  const net=roundNets(netBalances(P,R),1),st=stats(P,R,net);
+  const rt=r=>r.players.filter(p=>p!==r.winner).reduce((s,p)=>s+((r.pays&&r.pays[p])||0),0);
+  const pot=R.reduce((s,r)=>s+rt(r),0);
   $("hero").innerHTML=`<div><b>${R.length}</b><span>rounds played</span></div><div><b>${inr(pot)}</b><span>total moved on table</span></div><div><b>${st[0]&&R.length?esc(st[0].p):"–"}</b><span>leading</span></div>`;
   const pays=settle(net);
-  $("pays").innerHTML=pays.length?pays.map((x,i)=>{const k=x.from+">"+x.to+">"+x.amount,d=S.paid[k];
-    return`<div class="pay"><div><b>${esc(x.from)}</b> pays <b>${esc(x.to)}</b></div><span class="amt">${inr(x.amount)}</span></div>`}).join(""):'<p class="empty">Nothing to settle yet. Save a round first.</p>';
+  $("pays").innerHTML=pays.length?pays.map(x=>`<div class="pay"><div><b>${esc(x.from)}</b> pays <b>${esc(x.to)}</b></div><span class="amt">${inr(x.amount)}</span></div>`).join(""):'<p class="empty">Nothing to settle yet. Save a round first.</p>';
   $("lb").innerHTML=`<tr><th>#</th><th>Player</th><th class="n">Wins</th><th class="n">Win rate</th><th class="n">Net</th></tr>`+st.map((s,i)=>`<tr><td>${i+1}</td><td>${esc(s.p)}</td><td class="n">${s.wins}/${s.played}</td><td class="n">${s.rate}%</td><td class="n ${s.net>0?"pos":s.net<0?"neg":""}">${s.net>0?"+":""}${inr(s.net)}</td></tr>`).join("");
-  $("hist").innerHTML=R.length?R.slice().reverse().map(r=>`<li><span>${esc(r.winner)} won (${r.players.length} players)</span><span>${r.pays?inr(rt(r))+" pot":inr(r.amount)+" each"}</span></li>`).join(""):'<li class="empty">No rounds yet.</li>';
-  renderCustom();save();
+  $("hist").innerHTML=R.length?R.slice().reverse().map(r=>`<li><span>${esc(r.winner)} won (${r.players.length} players)</span><span>${inr(rt(r))} pot</span></li>`).join(""):'<li class="empty">No rounds yet.</li>';
+  renderCustom();
 }
-$("pf").onsubmit=e=>{e.preventDefault();const n=$("pn").value.trim();if(n&&!S.players.includes(n)){S.players.push(n);$("pn").value="";render()}};
-$("chips").onclick=e=>{const n=e.target.dataset.rm;if(n&&confirm("Remove "+n+" and their rounds?")){S.players=S.players.filter(p=>p!==n);S.rounds=S.rounds.map(r=>({...r,players:r.players.filter(p=>p!==n)})).filter(r=>r.winner!==n&&r.players.length>1);render()}};
+let prevAll=new Set();
+function renderCustom(){
+  const box=$("cbox"),old={};box.querySelectorAll("input").forEach(i=>old[i.dataset.c]=i.value);
+  const w=$("winner").value,pl=[...document.querySelectorAll("#checks input:checked")].map(i=>i.value).filter(p=>p!==w);
+  box.innerHTML=pl.map(p=>`<label class="cl">${esc(p)}<input type="number" min="0" step="any" inputmode="decimal" data-c="${esc(p)}" value="${old[p]??""}" placeholder="₹"></label>`).join("")||'<p class="empty">Select the players first.</p>';
+}
+$("jf").onsubmit=e=>{e.preventDefault();join($("jc").value)};
+$("newt").onclick=()=>join(newCode());
+$("leave").onclick=()=>{if(confirm("Leave this table? The data stays saved online under the same code."))leave()};
+$("copy").onclick=async()=>{const u=location.origin+location.pathname+"#"+code;try{await navigator.clipboard.writeText(u);$("copy").textContent="Copied"}catch(e){prompt("Copy this link:",u)}setTimeout(()=>$("copy").textContent="Copy invite link",1500)};
+$("pf").onsubmit=e=>{e.preventDefault();const n=$("pn").value.trim().replace(/[.#$\[\]\/]/g,"");if(n&&!S.players.includes(n)){addPlayer(n);$("pn").value=""}};
+$("chips").onclick=e=>{const n=e.target.dataset.rm;if(!n)return;
+  if(S.rounds.some(r=>r.players.includes(n))){alert(n+" has played rounds. Use New session to start fresh.");return}
+  if(confirm("Remove "+n+"?"))removePlayer(n)};
 $("add").onclick=()=>{
   const w=$("winner").value,pl=[...document.querySelectorAll("#checks input:checked")].map(i=>i.value);
   if(!w){alert("Add players and pick a winner.");return}
   if(pl.length<2||!pl.includes(w)){alert("Select at least two players, including the winner.");return}
-  let pays=null;{pays={};let t=0;pl.forEach(p=>{if(p!==w){const el=document.querySelector('[data-c="'+CSS.escape(p)+'"]');const v=el?parseFloat(el.value)||0:0;pays[p]=v;t+=v}});if(t<=0){alert("Enter what each losing player put in.");return}}
-  S.rounds.push({winner:w,amount:0,players:pl,pays});S.paid={};$("cbox").innerHTML="";render();
+  const pays={};let t=0;
+  pl.forEach(p=>{if(p!==w){const el=document.querySelector('[data-c="'+CSS.escape(p)+'"]'),v=el?parseFloat(el.value)||0:0;pays[p]=v;t+=v}});
+  if(t<=0){alert("Enter what each losing player put in.");return}
+  $("cbox").innerHTML="";addRound({winner:w,players:pl,pays,t:Date.now()});
 };
-$("pays").onclick=e=>{const k=e.target.dataset.paid;if(k){S.paid[k]=!S.paid[k];render()}};
-$("unit").onchange=()=>{S.paid={};render()};
-$("undo").onclick=()=>{S.rounds.pop();S.paid={};render()};
-function renderCustom(){
-  const box=$("cbox");
-  
-  
-  const old={};box.querySelectorAll("input").forEach(i=>old[i.dataset.c]=i.value);
-  const w=$("winner").value,pl=[...document.querySelectorAll("#checks input:checked")].map(i=>i.value).filter(p=>p!==w);
-  box.innerHTML=pl.map(p=>`<label class="cl">${esc(p)}<input type="number" min="0" step="any" inputmode="decimal" data-c="${esc(p)}" value="${old[p]??""}" placeholder="₹"></label>`).join("")||'<p class="empty">Select the players first.</p>';
-}
 $("winner").onchange=renderCustom;$("checks").onchange=renderCustom;
-$("reset").onclick=()=>{if(confirm("Clear all rounds? Players stay.")){S.rounds=[];S.paid={};render()}};
+$("undo").onclick=undoRound;
+$("reset").onclick=()=>{if(confirm("Clear all rounds for everyone at this table? Players stay."))clearRounds()};
 $("theme").onclick=()=>{const r=document.documentElement,d=getComputedStyle(r).getPropertyValue("--bg").trim()==="#0b1511";r.dataset.theme=d?"light":"dark"};
-render();
+
+// ---------- start ----------
+if(cfgOk){
+  try{
+    firebase.initializeApp(FIREBASE_CONFIG);db=firebase.database();
+    db.ref(".info/connected").on("value",s=>{$("dot").className="dot"+(s.val()?" on":"")});
+    let c=location.hash.slice(1);if(!c){try{c=localStorage.getItem(CK)||""}catch(e){}}
+    if(c)join(c);else render();
+  }catch(e){console.error(e);alert("Could not connect. Check the Firebase config.");render()}
+}else{
+  try{const x=localStorage.getItem(LK);if(x)S=Object.assign(S,JSON.parse(x))}catch(e){}
+  render();
+}
+window.addEventListener("hashchange",()=>{if(cfgOk){const c=location.hash.slice(1);if(c&&c!==code)join(c)}});
 </script>
 </body>
 </html>
